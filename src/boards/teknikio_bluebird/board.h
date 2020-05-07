@@ -30,15 +30,15 @@
 /*------------------------------------------------------------------*/
 /* LED
  *------------------------------------------------------------------*/
-#define LEDS_NUMBER       0 
-#define LED_PRIMARY_PIN   _PINNUM(0, 2)
+#define LEDS_NUMBER       0
+#define LED_PRIMARY_PIN   _PINNUM(0, 22)
 #define LED_SECONDARY_PIN 12 // Blue
 #define LED_STATE_ON      1
 /*------------------------------------------------------------------*/
 /* NEOPIXEL
  *------------------------------------------------------------------*/
 #define NEOPIXELS_NUMBER  1
-#define LED_NEOPIXEL      _PINNUM(0, 26)
+#define LED_NEOPIXEL      _PINNUM(1, 15)
 
 /*------------------------------------------------------------------*/
 /* BUTTON
