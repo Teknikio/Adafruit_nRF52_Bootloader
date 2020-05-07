@@ -72,7 +72,7 @@ void board_init(void)
   NRFX_DELAY_US(100); // wait for the pin state is stable
 
   // use PMW0 for LED RED
-  led_pwm_init(LED_PRIMARY, LED_PRIMARY_PIN);
+  //led_pwm_init(LED_PRIMARY, LED_PRIMARY_PIN);
   #if LEDS_NUMBER > 1
   led_pwm_init(LED_SECONDARY, LED_SECONDARY_PIN);
   #endif
