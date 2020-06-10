@@ -207,7 +207,7 @@ IPATH += $(SD_PATH)/$(SD_FILENAME)_API/include/nrf52
 # Debug option use RTT for printf
 ifeq ($(DEBUG), 1)
 	RTT_SRC = lib/SEGGER_RTT
-	
+
 	CFLAGS += -ggdb -DCFG_DEBUG -DSEGGER_RTT_MODE_DEFAULT=SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL
 	IPATH += $(RTT_SRC)/RTT
   C_SRC += $(RTT_SRC)/RTT/SEGGER_RTT.c
@@ -239,7 +239,7 @@ CFLAGS += \
 	-Wsign-compare \
 	-Wmissing-format-attribute \
 	-Wno-endif-labels \
-	-Wunreachable-code	
+	-Wunreachable-code
 
 # Suppress warning caused by SDK
 CFLAGS += -Wno-unused-parameter -Wno-expansion-to-defined
