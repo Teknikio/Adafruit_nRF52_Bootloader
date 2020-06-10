@@ -39,11 +39,34 @@
 static WriteState _wr_state = { 0 };
 
 void read_block(uint32_t block_no, uint8_t *data);
-int write_block(uint32_t block_no, uint8_t *data, bool quiet, WriteState *state);
+int  write_block(uint32_t block_no, uint8_t *data, WriteState *state);
 
 //--------------------------------------------------------------------+
 // tinyusb callbacks
 //--------------------------------------------------------------------+
+
+// Invoked when received SCSI_CMD_INQUIRY
+// Application fill vendor id, product id and revision with string up to 8, 16, 4 characters respectively
+void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16], uint8_t product_rev[4])
+{
+  (void) lun;
+
+  const char vid[] = "Adafruit";
+  const char pid[] = "nRF UF2";
+  const char rev[] = "1.0";
+
+  memcpy(vendor_id  , vid, strlen(vid));
+  memcpy(product_id , pid, strlen(pid));
+  memcpy(product_rev, rev, strlen(rev));
+}
+
+// Invoked when received Test Unit Ready command.
+// return true allowing host to read/write this LUN e.g SD card inserted
+bool tud_msc_test_unit_ready_cb(uint8_t lun)
+{
+  (void) lun;
+  return true;
+}
 
 // Callback invoked when received an SCSI command not in built-in list below
 // - READ_CAPACITY10, READ_FORMAT_CAPACITY, INQUIRY, MODE_SENSE6, REQUEST_SENSE
@@ -51,29 +74,15 @@ int write_block(uint32_t block_no, uint8_t *data, bool quiet, WriteState *state)
 int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16], void* buffer, uint16_t bufsize)
 {
   void const* response = NULL;
-  int32_t resplen = 0;
-  memset(buffer, 0, bufsize);
+  uint16_t resplen = 0;
 
-  switch ( scsi_cmd[0] )
+  // most scsi handled is input
+  bool in_xfer = true;
+
+  switch (scsi_cmd[0])
   {
-    case SCSI_CMD_TEST_UNIT_READY:
-      // Command that host uses to check our readiness before sending other commands
-      resplen = 0;
-    break;
-
     case SCSI_CMD_PREVENT_ALLOW_MEDIUM_REMOVAL:
       // Host is about to read/write etc ... better not to disconnect disk
-      resplen = 0;
-    break;
-
-    case SCSI_CMD_START_STOP_UNIT:
-      // Host try to eject/safe remove/poweroff us. We could safely disconnect with disk storage, or go into lower power
-      /* scsi_start_stop_unit_t const * start_stop = (scsi_start_stop_unit_t const *) scsi_cmd;
-       // Start bit = 0 : low power mode, if load_eject = 1 : unmount disk storage as well
-       // Start bit = 1 : Ready mode, if load_eject = 1 : mount disk storage
-       start_stop->start;
-       start_stop->load_eject;
-       */
       resplen = 0;
     break;
 
@@ -86,13 +95,18 @@ int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16], void* buffer, 
     break;
   }
 
-  // return len must not larger than bufsize
-  if ( resplen > (int32_t)bufsize ) resplen = bufsize;
+  // return resplen must not larger than bufsize
+  if ( resplen > bufsize ) resplen = bufsize;
 
-  // copy response to stack's buffer if any
-  if ( response && resplen )
+  if ( response && (resplen > 0) )
   {
-    memcpy(buffer, response, resplen);
+    if(in_xfer)
+    {
+      memcpy(buffer, response, resplen);
+    }else
+    {
+      // SCSI output
+    }
   }
 
   return resplen;
@@ -129,44 +143,126 @@ int32_t tud_msc_write10_cb (uint8_t lun, uint32_t lba, uint32_t offset, uint8_t*
   (void) lun;
 
   uint32_t count = 0;
-  int wr_ret;
-
-  while ( (count < bufsize) && ((wr_ret = write_block(lba, buffer, false, &_wr_state)) > 0) )
+  while ( count < bufsize )
   {
+    // Consider non-uf2 block write as successful
+    // only break if write_block is busy with flashing (return 0)
+    if ( 0 == write_block(lba, buffer, &_wr_state) ) break;
+
     lba++;
     buffer += 512;
     count  += 512;
   }
 
-  // Consider non-uf2 block write as successful
-  return  (wr_ret < 0) ? bufsize : count;
+  return count;
 }
 
 // Callback invoked when WRITE10 command is completed (status received and accepted by host).
 void tud_msc_write10_complete_cb(uint8_t lun)
 {
-  // uf2 file writing is complete --> complete DFU process
-  if ( _wr_state.numBlocks && (_wr_state.numWritten >= _wr_state.numBlocks) )
+  static bool first_write = true;
+
+  // abort the DFU, uf2 block failed integrity check
+  if ( _wr_state.aborted )
   {
-    led_state(STATE_WRITING_FINISHED);
+    // aborted and reset
+    PRINTF("Aborted\r\n");
 
     dfu_update_status_t update_status;
-
     memset(&update_status, 0, sizeof(dfu_update_status_t ));
-    update_status.status_code = DFU_UPDATE_APP_COMPLETE;
-    update_status.app_crc     = 0; // skip CRC checking with uf2 upgrade
-    update_status.app_size    = _wr_state.numBlocks*256;
+    update_status.status_code = DFU_RESET;
 
     bootloader_dfu_update_process(update_status);
+
+    led_state(STATE_WRITING_FINISHED);
+  }
+  else if ( _wr_state.numBlocks )
+  {
+    // Start LED writing pattern with first write
+    if (first_write)
+    {
+      first_write = false;
+      led_state(STATE_WRITING_STARTED);
+    }
+
+    // All block of uf2 file is complete --> complete DFU process
+    if (_wr_state.numWritten >= _wr_state.numBlocks)
+    {
+      dfu_update_status_t update_status;
+      memset(&update_status, 0, sizeof(dfu_update_status_t ));
+
+      if ( _wr_state.update_bootloader )
+      {
+        // update bootloader always end with reset
+        update_status.status_code = DFU_RESET;
+
+        // Location of current stored new bootloader
+        uint32_t * new_bootloader = (uint32_t *) BOOTLOADER_ADDR_NEW_RECIEVED;
+
+        PRINT_HEX(new_bootloader);
+
+        // skip if there is no bootloader change
+        if ( memcmp(new_bootloader, (uint8_t*) BOOTLOADER_ADDR_START, DFU_BL_IMAGE_MAX_SIZE) )
+        {
+          PRINTF("Coyping new bootloader\r\n");
+
+          sd_mbr_command_t command =
+          {
+            .command = SD_MBR_COMMAND_COPY_BL,
+            .params.copy_bl.bl_src = new_bootloader,
+            .params.copy_bl.bl_len = DFU_BL_IMAGE_MAX_SIZE/4 // size in words
+          };
+
+          // on success, COPY_BL won't return but run the new bootloader right away.
+          sd_mbr_command(&command);
+        }
+
+        PRINTF("bootloader update complete\r\n");
+      }else
+      {
+        // update App
+        update_status.status_code = DFU_UPDATE_APP_COMPLETE;
+
+        PRINTF("Application update complete\r\n");
+      }
+
+      bootloader_dfu_update_process(update_status);
+
+      led_state(STATE_WRITING_FINISHED);
+    }
   }
 }
 
+// Invoked when received SCSI_CMD_READ_CAPACITY_10 and SCSI_CMD_READ_FORMAT_CAPACITY to determine the disk size
+// Application update block count and block size
 void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_size)
 {
   (void) lun;
 
-  *block_count = UF2_NUM_BLOCKS;
+  *block_count = CFG_UF2_NUM_BLOCKS;
   *block_size  = 512;
+}
+
+// Invoked when received Start Stop Unit command
+// - Start = 0 : stopped power mode, if load_eject = 1 : unload disk storage
+// - Start = 1 : active mode, if load_eject = 1 : load disk storage
+bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, bool load_eject)
+{
+  (void) lun;
+  (void) power_condition;
+
+  if ( load_eject )
+  {
+    if (start)
+    {
+      // load disk storage
+    }else
+    {
+      // unload disk storage
+    }
+  }
+
+  return true;
 }
 
 #endif

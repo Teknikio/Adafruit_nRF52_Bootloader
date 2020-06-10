@@ -39,6 +39,7 @@
 //#define LED_RGB_GREEN_PIN     _PINNUM(0, 22)
 //#define LED_RGB_BLUE_PIN      _PINNUM(0, 24)
 #define BOARD_RGB_BRIGHTNESS  0x404040
+
 /*------------------------------------------------------------------*/
 /* BUTTON
  *------------------------------------------------------------------*/
@@ -48,9 +49,20 @@
 #define BUTTON_2              _PINNUM(0, 19)  // no connection
 #define BUTTON_PULL           NRF_GPIO_PIN_PULLUP
 
-// Used as model string in OTA mode
+//--------------------------------------------------------------------+
+// BLE OTA
+//--------------------------------------------------------------------+
 #define BLEDIS_MANUFACTURER   "MakerDiary"
 #define BLEDIS_MODEL          "nRF52840 Micro Dev Kit USB Dongle"
+
+//--------------------------------------------------------------------+
+// USB
+//--------------------------------------------------------------------+
+
+// Shared VID/PID with Feather nRF52840, will be disabled for building in the future
+#define USB_DESC_VID           0x239A
+#define USB_DESC_UF2_PID       0x0029
+#define USB_DESC_CDC_ONLY_PID  0x0029
 
 #define UF2_PRODUCT_NAME   "MDK nRF52840 USB Dongle"
 #define UF2_VOLUME_LABEL   "MDK840DONGL"

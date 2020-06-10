@@ -104,7 +104,6 @@ void board_teardown(void)
 #if defined(LED_NEOPIXEL) || defined(LED_RGB_RED_PIN)
   neopixel_teardown();
 #endif
-  // Button
 
   // Stop RTC1 used by app_timer
   NVIC_DisableIRQ(RTC1_IRQn);
@@ -115,6 +114,13 @@ void board_teardown(void)
 
   // Stop LF clock
   NRF_CLOCK->TASKS_LFCLKSTOP = 1UL;
+
+  // make sure all pins are back in reset state
+  // NUMBER_OF_PINS is defined in nrf_gpio.h
+  for (int i = 0; i < NUMBER_OF_PINS; ++i)
+  {
+    nrf_gpio_cfg_default(i);
+  }
 }
 
 static uint32_t _systick_count = 0;
@@ -125,11 +131,6 @@ void SysTick_Handler(void)
   led_tick();
 }
 
-
-uint32_t tusb_hal_millis(void)
-{
-  return ( ( ((uint64_t)app_timer_cnt_get())*1000*(APP_TIMER_CONFIG_RTC_FREQUENCY+1)) / APP_TIMER_CLOCK_FREQ );
-}
 
 void pwm_teardown(NRF_PWM_Type* pwm )
 {
@@ -289,7 +290,7 @@ void led_state(uint32_t state)
     } else if (temp_color_active) {
         final_color = (uint8_t*)&rgb_color;
     }
-    #if LED_NEOPIXEL || defined(LED_RGB_RED_PIN)
+    #if defined(LED_NEOPIXEL) || defined(LED_RGB_RED_PIN)
     if (final_color != NULL) {
         neopixel_write(final_color);
     }

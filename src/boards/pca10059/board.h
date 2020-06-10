@@ -44,18 +44,20 @@
 #define BUTTON_2       _PINNUM(1, 10)
 #define BUTTON_PULL    NRF_GPIO_PIN_PULLUP
 
-/*------------------------------------------------------------------*/
-/* UART
- *------------------------------------------------------------------*/
-#define RX_PIN_NUMBER  20
-#define TX_PIN_NUMBER  17
-#define CTS_PIN_NUMBER 15
-#define RTS_PIN_NUMBER 13
-#define HWFC           false
-
-// Used as model string in OTA mode
+//--------------------------------------------------------------------+
+// BLE OTA
+//--------------------------------------------------------------------+
 #define BLEDIS_MANUFACTURER  "Nordic"
 #define BLEDIS_MODEL         "PCA10059"
+
+//--------------------------------------------------------------------+
+// USB
+//--------------------------------------------------------------------+
+
+// Shared VID/PID with Feather nRF52840, will be disabled for building in the future
+#define USB_DESC_VID           0x239A
+#define USB_DESC_UF2_PID       0x0029
+#define USB_DESC_CDC_ONLY_PID  0x0029
 
 #define UF2_PRODUCT_NAME  "Nordic nRF52840 Dongle"
 #define UF2_BOARD_ID      "nRF52840-pca10059-v1"

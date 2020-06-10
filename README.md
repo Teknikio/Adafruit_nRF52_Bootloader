@@ -1,12 +1,15 @@
 # Adafruit nRF52 Bootloader
 
-[![Build Status](https://travis-ci.com/adafruit/Adafruit_nRF52_Bootloader.svg?branch=master)](https://travis-ci.com/adafruit/Adafruit_nRF52_Bootloader)
+[![Build Status](https://github.com/adafruit/Adafruit_nRF52_Bootloader/workflows/Build/badge.svg)](https://github.com/adafruit/Adafruit_nRF52_Bootloader/actions)
 
 This is a CDC/DFU/UF2 bootloader for nRF52 boards.
 
+- [Adafruit CLUE](https://www.adafruit.com/product/4500)
+- [Adafruit Circuit Playground Bluefruit](https://www.adafruit.com/product/4333)
 - [Adafruit Feather nRF52832](https://www.adafruit.com/product/3406)
 - [Adafruit Feather nRF52840 Express](https://www.adafruit.com/product/4062)
-- [Adafruit Circuit Playground Bluefruit](https://www.adafruit.com/product/4333)
+- [Adafruit Feather nRF52840 Sense](https://www.adafruit.com/product/4516)
+- [Adafruit ItsyBitsy nRF52840 Express](https://www.adafruit.com/product/4481)
 - Adafruit Metro nRF52840 Express
 - [Electronut Labs Papyr](https://docs.electronut.in/papyr/)
 - MakerDiary MDK nRF52840 USB Dongle
@@ -18,33 +21,20 @@ This is a CDC/DFU/UF2 bootloader for nRF52 boards.
 - Teknikio Bluebird (https://www.teknikio.com/pages/bluebird)
 
 UF2 is an easy-to-use bootloader that appears as a flash drive. You can just copy `.uf2`-format
-application images to the flash drive to load new firmware.
-See https://github.com/Microsoft/uf2 and https://github.com/adafruit/uf2-samdx1
-for more information.
+application images to the flash drive to load new firmware. See https://github.com/Microsoft/uf2 and https://github.com/adafruit/uf2-samdx1 for more information.
 
-[adafruit-nrfutil](https://github.com/adafruit/Adafruit_nRF52_nrfutil),
-a modified version of [Nordic nrfutil](https://github.com/NordicSemiconductor/pc-nrfutil),
-is required to perform DFU.
-Install `python3` if it is not installed already and run this command to install adafruit-nrfutil from PyPi:
+[adafruit-nrfutil](https://github.com/adafruit/Adafruit_nRF52_nrfutil), a modified version of [Nordic nrfutil](https://github.com/NordicSemiconductor/pc-nrfutil), is required to perform DFU. Install `python3` if it is not installed already and run this command to install adafruit-nrfutil from PyPi:
 
 ```
 $ pip3 install --user adafruit-nrfutil
 ```
-
-This repository depends on the following submodules:
-
-- [tinyusb](https://github.com/hathach/tinyusb)
-- [nrfx](https://github.com/NordicSemiconductor/nrfx)
-
-Note that `tinyusb` also includes `nrfx` as a submodule, so you need
-to initialize and update  submodules with the `--recursive`` flag.
 
 Clone this repo with following commands, or fork it for your own development
 
 ```
 git clone https://github.com/adafruit/Adafruit_nRF52_Bootloader
 cd Adafruit_nRF52_Bootloader
-git submodule update --init --recursive
+git submodule update --init
 ```
 
 ## Features
@@ -62,7 +52,7 @@ There are two pins, `DFU` and `FRST` that bootloader will check upon reset/power
 - `Triple Reset` Reset three times within 1000 ms will enter bootloader with OTA, to upgrade with a mobile application such as Nordic nrfConnect/Toolbox (only works with nRF52840)
 - `DFU = LOW` and `FRST = HIGH`: Enter bootloader with UF2 and CDC support
 - `DFU = LOW` and `FRST = LOW`: Enter bootloader with OTA, to upgrade with a mobile application such as Nordic nrfConnect/Toolbox
-- `DFU = HIGH` and `FRST = LOW`: Factory Reset mode: erase firmware application and its data
+- <s>`DFU = HIGH` and `FRST = LOW`: Factory Reset mode: erase firmware application and its data</s>
 - `DFU = HIGH` and `FRST = HIGH`: Go to application code if it is present, otherwise enter DFU with UF2
 - The `GPREGRET` register can also be set to force the bootloader can enter any of above modes (plus a CDC-only mode for Arduino).
 `GPREGRET` is set by the application before performing a soft reset.
@@ -91,6 +81,12 @@ To create a UF2 image from a .hex file:
 uf2conv.py firmware.hex -c -f 0xADA52840
 ```
 
+To create a UF2 image for bootloader from a .hex file using separated family of **0xd663823c**
+
+```
+uf2conv.py bootloader.hex -c -f 0xd663823c
+```
+
 ## Burn & Upgrade with pre-built binaries
 
 You can burn and/or upgrade the bootloader with either a J-link or DFU (serial) to a specific pre-built binary version
@@ -104,19 +100,18 @@ both bootloader and the Nordic SoftDevice, you can freely upgrade/downgrade to a
 ## How to compile and build
 
 You should only continue if you are looking to develop bootloader for your own.
-You must have have  a J-Link available to "unbrick" your device.
-
-### Option 1: Build with Makefile
+You must have have a J-Link available to "unbrick" your device.
 
 Prerequisites
 
 - ARM GCC
-- Nordic's [nRF5x Command Line Tools](http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.tools%2Fdita%2Ftools%2Fnrf5x_command_line_tools%2Fnrf5x_installation.html)
+- Nordic's [nRF5x Command Line Tools](https://www.nordicsemi.com/Software-and-Tools/Development-Tools/nRF-Command-Line-Tools)
+- [Python IntelHex](https://pypi.org/project/IntelHex/)
 
 To build:
 
 ```
-make BOARD=feather_nrf52840_express all combinehex
+make BOARD=feather_nrf52840_express all
 ```
 
 To flash the bootloader with JLink:
@@ -135,12 +130,6 @@ To flash SoftDevice (and chip erase):
 
 ```
 make BOARD=feather_nrf52840_express sd
-```
-
-To erase all of flash:
-
-```
-make BOARD=feather_nrf52840_express erase
 ```
 
 For the list of supported boards, run `make` without `BOARD=` :
@@ -165,34 +154,26 @@ Compiling file: main.c
 make: *** [_build/main.o] Error 127
 ```
 
-... you may need to edit the `Makefile` and update `GNU_INSTALL_ROOT` to point to the root path of your GCC ARM toolchain.
+... you may need to pass the location of the GCC ARM toolchain binaries to `make` using
+the variable `CROSS_COMPILE` as below:
+```
+$ make CROSS_COMPILE=/opt/gcc-arm-none-eabi-9-2019-q4-major/bin/arm-none-eabi- BOARD=feather_nrf52832 all
+```
 
-#### 2. `mergehex: No such file or directory`
+#### 2. `ModuleNotFoundError: No module named 'intelhex'`
 
-Make sure that `mergehex` is available from the command-line. This binary is
-part of Nordic's nRF5x Command Line Tools.
+Install python-intelhex with
+
+```
+pip install intelhex
+```
+
+
+
+
 
 #### 3. `make: nrfjprog: No such file or directory`
 
 Make sure that `nrfjprog` is available from the command-line. This binary is
 part of Nordic's nRF5x Command Line Tools.
 
-On POSIX-type systems you can temporarily add the path to `nrfjprog` via a
-variation on the following command:
-
-```
-$ export PATH=$PATH:/location/of/nRF5x-Command-Line-Tools_9_7_2_OSX/nrfjprog
-```
-
-### Option 2: Build using Segger Embedded Studio
-
-For easier debugging you can also use [SES](https://www.segger.com/products/development-tools/embedded-studio/).
-The project file is located at `src/segger/Adafruit_nRF52_Bootloader.emProject`.
-
-> **Note**: SES only flashes the bootloader when you click download, not the SoftDevice.
-You need to flash the SoftDevice beforehand if you haven't already done so.
-As mentioned above do something like:
-
-```
-make BOARD=feather_nrf52840_express sd
-```
