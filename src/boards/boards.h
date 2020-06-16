@@ -34,7 +34,7 @@
 #include "board.h"
 
 #ifndef UF2_VOLUME_LABEL
-#define UF2_VOLUME_LABEL   "NRF52BOOT  "
+#define UF2_VOLUME_LABEL   "TEKBOOT  "
 #endif
 
 #ifndef BUTTON_DFU
